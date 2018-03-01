@@ -122,7 +122,7 @@ class CreateVolume(command.ShowOne):
         parser.add_argument(
             "--hint",
             metavar="<key=value>",
-            action=parseractions.KeyValueAction,
+            action=parseractions.MultiKeyValueAction,
             help=_("Arbitrary scheduler hint key-value pairs to help boot "
                    "an instance (repeat option to set multiple hints)"),
         )
@@ -204,6 +204,17 @@ class CreateVolume(command.ShowOne):
                 identity_client.users,
                 parsed_args.user).id
 
+        hints = {}
+        if parsed_args.hint:
+            for hint in parsed_args.hint:
+                for key,value in hint.iteritems():
+                    if key in hints:
+                        if isinstance(hints[key], six.string_types):
+                            hints[key] = [hints[key]]
+                        hints[key] += [value]
+                    else:
+                        hints[key] = value
+
         volume = volume_client.volumes.create(
             size=parsed_args.size,
             snapshot_id=snapshot,
@@ -219,7 +230,7 @@ class CreateVolume(command.ShowOne):
             consistencygroup_id=consistency_group,
             source_replica=replicated_source_volume,
             multiattach=parsed_args.multi_attach,
-            scheduler_hints=parsed_args.hint,
+            scheduler_hints=hints,
         )
 
         if parsed_args.bootable or parsed_args.non_bootable:
